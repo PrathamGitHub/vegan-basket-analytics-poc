@@ -1,0 +1,13 @@
+type: explore
+
+display_name: Daily Metrics Explorer
+metrics_view: daily_metrics
+
+dimensions: "*"
+measures: "*"
+
+defaults:
+  time_range: P3M
+
+time_zones:
+  - Asia/Kolkata

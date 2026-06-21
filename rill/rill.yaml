@@ -1,0 +1,12 @@
+compiler: rillv1
+
+display_name: Vegan Basket Analytics
+
+olap_connector: duckdb
+
+mock_users:
+  - email: analyst@veganbasket.local
+
+features:
+  cloud_editing: true
+

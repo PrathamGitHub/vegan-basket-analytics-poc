@@ -1,0 +1,119 @@
+type: canvas
+
+display_name: Vegan Basket Operations
+
+defaults:
+  time_range: P3M
+  comparison_mode: none
+
+time_zones:
+  - Asia/Kolkata
+
+filters:
+  enable: true
+  pinned:
+    - product_name
+    - vendor_name
+    - customer_name
+
+rows:
+  - height: 140px
+    items:
+      - kpi_grid:
+          comparison:
+            - percent_change
+            - delta
+            - previous
+          measures:
+            - purchase_qty
+            - purchase_amount
+            - sales_qty
+            - sales_amount
+            - payments_paid
+            - payments_received
+            - outstanding_payable
+            - outstanding_receivable
+          metrics_view: daily_metrics
+          sparkline: bottom
+        width: 12
+
+  - height: 320px
+    items:
+      - line_chart:
+          metrics_view: daily_metrics
+          title: Daily Purchase Trend
+          x:
+            field: date
+            sort: x
+            type: temporal
+          y:
+            field: purchase_amount
+            type: quantitative
+            zeroBasedOrigin: true
+        width: 6
+      - line_chart:
+          title: Daily Sales Trend
+          metrics_view: daily_metrics
+          x:
+            field: date
+            type: temporal
+            sort: x
+          y:
+            field: sales_amount
+            type: quantitative
+            zeroBasedOrigin: true
+        width: 6
+
+  - height: 320px
+    items:
+      - bar_chart:
+          title: Product Purchase Amount
+          metrics_view: product_summary
+          x:
+            field: product_name
+            type: nominal
+            sort: -y
+          y:
+            field: purchase_amount
+            type: quantitative
+            zeroBasedOrigin: true
+        width: 6
+      - bar_chart:
+          title: Product Sales Amount
+          metrics_view: product_summary
+          x:
+            field: product_name
+            type: nominal
+            sort: -y
+          y:
+            field: sales_amount
+            type: quantitative
+            zeroBasedOrigin: true
+        width: 6
+
+  - height: 320px
+    items:
+      - bar_chart:
+          title: Vendor Outstanding
+          metrics_view: vendor_summary
+          x:
+            field: vendor_name
+            type: nominal
+            sort: -y
+          y:
+            field: outstanding_payable
+            type: quantitative
+            zeroBasedOrigin: true
+        width: 6
+      - bar_chart:
+          title: Customer Outstanding
+          metrics_view: customer_summary
+          x:
+            field: customer_name
+            type: nominal
+            sort: -y
+          y:
+            field: outstanding_receivable
+            type: quantitative
+            zeroBasedOrigin: true
+        width: 6

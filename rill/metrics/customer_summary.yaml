@@ -1,0 +1,34 @@
+version: 1
+type: metrics_view
+
+display_name: Customer Summary
+model: customer_summary_data
+
+security:
+  access: true
+
+dimensions:
+  - name: customer_name
+    display_name: Customer
+    column: customer_name
+
+measures:
+  - name: sales_qty
+    display_name: Sales Qty (kg)
+    expression: sum(sales_qty)
+    format_d3: ",.1f"
+
+  - name: sales_amount
+    display_name: Sales Amount (Rs)
+    expression: sum(sales_amount)
+    format_d3: ",.0f"
+    format_d3_locale:
+      currency: ["₹", ""]
+
+  - name: outstanding_receivable
+    display_name: Outstanding Receivable (Rs)
+    description: Lifetime accounts receivable balance by customer.
+    expression: sum(outstanding_receivable)
+    format_d3: ",.0f"
+    format_d3_locale:
+      currency: ["₹", ""]

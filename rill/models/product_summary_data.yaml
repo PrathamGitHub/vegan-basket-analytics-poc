@@ -1,0 +1,7 @@
+type: model
+materialize: false
+
+refs:
+  - daily_metrics_data
+
+sql: SELECT * FROM vb.marts.mart_product_summary

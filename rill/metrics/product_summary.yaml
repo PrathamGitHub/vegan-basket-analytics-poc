@@ -1,0 +1,38 @@
+version: 1
+type: metrics_view
+
+display_name: Product Summary
+model: product_summary_data
+
+security:
+  access: true
+
+dimensions:
+  - name: product_name
+    display_name: Product
+    column: product_name
+
+measures:
+  - name: purchase_qty
+    display_name: Purchase Qty (kg)
+    expression: sum(purchase_qty)
+    format_d3: ",.1f"
+
+  - name: sales_qty
+    display_name: Sales Qty (kg)
+    expression: sum(sales_qty)
+    format_d3: ",.1f"
+
+  - name: purchase_amount
+    display_name: Purchase Amount (Rs)
+    expression: sum(purchase_amount)
+    format_d3: ",.0f"
+    format_d3_locale:
+      currency: ["₹", ""]
+
+  - name: sales_amount
+    display_name: Sales Amount (Rs)
+    expression: sum(sales_amount)
+    format_d3: ",.0f"
+    format_d3_locale:
+      currency: ["₹", ""]

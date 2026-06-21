@@ -1,0 +1,70 @@
+version: 1
+type: metrics_view
+
+display_name: Daily Metrics
+model: daily_metrics_data
+timeseries: date
+smallest_time_grain: day
+
+security:
+  access: true
+
+dimensions:
+  - name: date
+    display_name: Date
+    column: date
+
+measures:
+  - name: purchase_qty
+    display_name: Purchase Qty (kg)
+    expression: sum(purchase_qty)
+    format_d3: ",.1f"
+
+  - name: purchase_amount
+    display_name: Purchase Amount (Rs)
+    expression: sum(purchase_amount)
+    format_d3: ",.0f"
+    format_d3_locale:
+      currency: ["₹", ""]
+
+  - name: sales_qty
+    display_name: Sales Qty (kg)
+    expression: sum(sales_qty)
+    format_d3: ",.1f"
+
+  - name: sales_amount
+    display_name: Sales Amount (Rs)
+    expression: sum(sales_amount)
+    format_d3: ",.0f"
+    format_d3_locale:
+      currency: ["₹", ""]
+
+  - name: payments_paid
+    display_name: Payments Paid (Rs)
+    expression: sum(payments_paid)
+    format_d3: ",.0f"
+    format_d3_locale:
+      currency: ["₹", ""]
+
+  - name: payments_received
+    display_name: Payments Received (Rs)
+    expression: sum(payments_received)
+    format_d3: ",.0f"
+    format_d3_locale:
+      currency: ["₹", ""]
+
+  - name: outstanding_payable
+    display_name: Outstanding Payable (Rs)
+    description: Accounts payable balance as of the last day in the selected date range.
+    expression: arg_max(outstanding_payable, date)
+    format_d3: ",.0f"
+    format_d3_locale:
+      currency: ["₹", ""]
+
+  - name: outstanding_receivable
+    display_name: Outstanding Receivable (Rs)
+    description: Accounts receivable balance as of the last day in the selected date range.
+    expression: arg_max(outstanding_receivable, date)
+    format_d3: ",.0f"
+    format_d3_locale:
+      currency: ["₹", ""]
