@@ -6,3 +6,7 @@ sources:
     tables:
       - name: transaction_log
         description: Transaction Log worksheet loaded by dlt ingestion.
+      - name: vendor_rates
+        description: Vendor Rates worksheet loaded by dlt ingestion.
+      - name: customer_rates
+        description: Customer Rates worksheet loaded by dlt ingestion.

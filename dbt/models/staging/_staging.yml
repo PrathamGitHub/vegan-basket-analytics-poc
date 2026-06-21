@@ -18,3 +18,23 @@ models:
       - name: payment_rs
         tests:
           - not_null
+
+  - name: stg_vendor_rates
+    description: Typed and standardized Vendor Rates rows from raw ingestion.
+    columns:
+      - name: effective_from
+        tests:
+          - not_null
+      - name: vendor_name
+        tests:
+          - not_null
+
+  - name: stg_customer_rates
+    description: Typed and standardized Customer Rates rows from raw ingestion.
+    columns:
+      - name: effective_from
+        tests:
+          - not_null
+      - name: customer_name
+        tests:
+          - not_null
