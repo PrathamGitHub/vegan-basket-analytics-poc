@@ -1,0 +1,82 @@
+version: 2
+
+models:
+  - name: mart_daily_metrics
+    description: >
+      Daily company-level purchase, sales, payment, and cumulative outstanding
+      balances for Rill dashboards. Includes every calendar day from first to
+      last activity (zero-filled on inactive days). Amount metrics use matched
+      rates only; quantity includes all lines. Payments include refunds
+      (negative amounts). Outstanding columns are cumulative running balances.
+    columns:
+      - name: date
+        description: Business transaction date (continuous daily spine).
+        tests:
+          - not_null
+          - unique
+      - name: purchase_qty
+        description: Total purchase quantity (kg) for the day, all rate statuses.
+      - name: purchase_amount
+        description: Sum of quantity × vendor rate for matched purchase lines only.
+      - name: sales_qty
+        description: Total sales quantity (kg) for the day, all rate statuses.
+      - name: sales_amount
+        description: Sum of quantity × customer rate for matched sale lines only.
+      - name: payments_paid
+        description: >
+          Net vendor payments on purchase transactions for the day
+          (positive = paid, negative = refund).
+      - name: payments_received
+        description: >
+          Net customer collections on sale transactions for the day
+          (positive = received, negative = refund).
+      - name: outstanding_payable
+        description: >
+          Cumulative accounts payable balance through this date
+          (running sum of daily purchase_amount minus payments_paid).
+      - name: outstanding_receivable
+        description: >
+          Cumulative accounts receivable balance through this date
+          (running sum of daily sales_amount minus payments_received).
+
+  - name: mart_product_summary
+    description: >
+      Lifetime purchase and sales totals by product. Amounts use matched rates
+      only; quantities include all lines regardless of rate status.
+    columns:
+      - name: product_name
+        tests:
+          - not_null
+          - unique
+      - name: purchase_qty
+      - name: sales_qty
+      - name: purchase_amount
+      - name: sales_amount
+
+  - name: mart_vendor_summary
+    description: >
+      Lifetime purchase totals and accounts payable balance by vendor.
+      Outstanding payable may be negative when payments exceed matched
+      purchase value (overpayment or refund).
+    columns:
+      - name: vendor_name
+        tests:
+          - not_null
+          - unique
+      - name: purchase_qty
+      - name: purchase_amount
+      - name: outstanding_payable
+
+  - name: mart_customer_summary
+    description: >
+      Lifetime sales totals and accounts receivable balance by customer.
+      Outstanding receivable may be negative when collections exceed matched
+      sales value (overpayment or refund).
+    columns:
+      - name: customer_name
+        tests:
+          - not_null
+          - unique
+      - name: sales_qty
+      - name: sales_amount
+      - name: outstanding_receivable
