@@ -1,0 +1,17 @@
+name: vegan_basket
+version: 1.0.0
+config-version: 2
+profile: vegan_basket
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+test-paths: ["tests"]
+
+models:
+  vegan_basket:
+    staging:
+      +schema: staging
+      +materialized: view
+    analytics:
+      +schema: analytics
+      +materialized: view

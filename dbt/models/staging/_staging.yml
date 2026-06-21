@@ -1,0 +1,20 @@
+version: 2
+
+models:
+  - name: stg_transaction_log
+    description: Typed and standardized Transaction Log rows from raw ingestion.
+    columns:
+      - name: transaction_timestamp
+        tests:
+          - not_null
+      - name: transaction_date
+        tests:
+          - not_null
+      - name: transaction_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Purchase', 'Sale']
+      - name: payment_rs
+        tests:
+          - not_null

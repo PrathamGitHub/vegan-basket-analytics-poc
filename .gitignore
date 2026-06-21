@@ -10,6 +10,12 @@ data/*.duckdb
 # dlt local state
 .dlt/
 
+# dbt
+dbt/profiles.yml
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+
 # Python
 __pycache__/
 *.py[cod]

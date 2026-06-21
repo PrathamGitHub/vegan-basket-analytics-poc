@@ -1,0 +1,44 @@
+version: 2
+
+models:
+  - name: transaction_items
+    description: >
+      Product-level transaction lines unpivoted from wide transaction rows.
+      One row per source transaction and product with quantity > 0.
+    columns:
+      - name: transaction_key
+        description: MD5 hash of timestamp, type, counterparties, and payment amount.
+        tests:
+          - not_null
+      - name: transaction_timestamp
+        tests:
+          - not_null
+      - name: transaction_date
+        tests:
+          - not_null
+      - name: transaction_type
+        tests:
+          - not_null
+          - accepted_values:
+              values: ['Purchase', 'Sale']
+      - name: product_name
+        tests:
+          - not_null
+          - accepted_values:
+              values:
+                - Mushroom Bulk
+                - Mushroom Pannet
+                - Mushroom B Grade
+                - Baby Corn
+                - Lahsun
+      - name: quantity_kg
+        tests:
+          - not_null
+      - name: payment_amount
+        tests:
+          - not_null
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          combination_of_columns:
+            - transaction_key
+            - product_name
