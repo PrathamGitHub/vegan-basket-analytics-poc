@@ -9,6 +9,8 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
+    unzip \
+    git \
     && rm -rf /var/lib/apt/lists/*
 
 # Install the official Rill binary
@@ -24,4 +26,4 @@ EXPOSE 9009
 
 # --no-open  → don't try to launch a browser
 # --project  → path to the rill project folder
-CMD ["rill", "start", "--project", "/app/rill", "--port", "9009", "--no-open"]
+CMD ["rill", "start", "/app/rill", "--port", "9009", "--no-open"]

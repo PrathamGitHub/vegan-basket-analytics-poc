@@ -6,6 +6,7 @@ venv/
 # Credentials and local data
 credentials/
 data/*.duckdb
+data/*
 
 # dlt local state
 .dlt/

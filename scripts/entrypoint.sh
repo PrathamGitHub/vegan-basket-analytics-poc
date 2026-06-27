@@ -14,6 +14,12 @@ printenv | grep -Ev '^(HOSTNAME|HOME|PWD|SHLVL|_|OLDPWD|PATH)=' \
     | sed 's/=\(.*\)/="\1"/' \
     >> /etc/environment
 
+# If a command was passed (e.g. docker compose run pipeline /app/scripts/run_daily.sh),
+# run it directly instead of starting cron.
+if [[ $# -gt 0 ]]; then
+    exec "$@"
+fi
+
 echo "[entrypoint] Cron schedule: 17:30 UTC (23:00 IST) daily"
 echo "[entrypoint] Logs: /app/data/logs/ingest-YYYY-MM-DD.log"
 echo "[entrypoint] Starting cron..."

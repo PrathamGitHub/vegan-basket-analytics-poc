@@ -3,4 +3,4 @@ type: connector
 driver: duckdb
 managed: true
 allow_host_access: true
-init_sql: "ATTACH '../data/vegan_basket.duckdb' AS vb (READ_ONLY);"
+init_sql: "ATTACH '/app/data/vegan_basket.duckdb' AS vb (READ_ONLY);"
