@@ -13,6 +13,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+export INGEST_START_EPOCH="$(date +%s)"
+
 # ── Logging ──────────────────────────────────────────────────────────────────
 LOG_DIR="$ROOT/data/logs"
 mkdir -p "$LOG_DIR"
@@ -23,6 +25,15 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 
 ts() { date '+%Y-%m-%d %H:%M:%S %Z'; }
 log() { echo "[$(ts)] $*"; }
+
+_on_error() {
+    local exit_code=$?
+    log "ERROR: daily ingest failed (exit ${exit_code})"
+    python -m src.telegram_digest --failure --exit-code="${exit_code}" \
+        || log "Telegram failure alert could not be sent (non-fatal)"
+    exit "${exit_code}"
+}
+trap _on_error ERR
 
 log "==============================="
 log "Vegan Basket daily ingest START"
@@ -60,6 +71,10 @@ log "--- Pipeline finished ---"
 log "--- Running dbt ---"
 dbt run --project-dir "$ROOT/dbt" --profiles-dir "$ROOT/dbt"
 log "--- dbt finished ---"
+
+log "--- Sending Telegram digest ---"
+python -m src.telegram_digest \
+    || log "Telegram digest could not be sent (non-fatal)"
 
 log "=============================="
 log "Vegan Basket daily ingest DONE"

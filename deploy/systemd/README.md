@@ -77,6 +77,17 @@ These are kept separately from the journal for easy sharing or inspection.
 
 ---
 
+## Telegram digest
+
+After each successful run, a daily metrics summary is sent to your private
+Telegram bot chat. On failure, a short alert is sent instead.
+
+Setup (BotFather, chat ID, `.env` variables, testing):
+
+**[deploy/telegram/README.md](../telegram/README.md)**
+
+---
+
 ## Alternative: crontab
 
 If you prefer cron over systemd, add this line via `crontab -e`:

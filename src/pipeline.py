@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import json
 import logging
 import sys
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import dlt
 import duckdb
@@ -17,6 +20,41 @@ from src.revision_guard import (
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
+_IST = ZoneInfo("Asia/Kolkata")
+
+
+def _record_ingest_run(
+    settings,
+    *,
+    skipped: bool,
+    current_counts: dict[str, int],
+    stored_counts: dict[str, int] | None,
+) -> None:
+    row_delta: dict[str, int] | None = None
+    if not skipped:
+        if stored_counts is None:
+            row_delta = dict(current_counts)
+        else:
+            row_delta = {
+                key: current_counts[key] - stored_counts.get(key, 0)
+                for key in current_counts
+                if current_counts[key] != stored_counts.get(key, 0)
+            }
+
+    status_path = settings.ingest_state_path.parent / "last_ingest_run.json"
+    status_path.parent.mkdir(parents=True, exist_ok=True)
+    status_path.write_text(
+        json.dumps(
+            {
+                "finished_at": datetime.now(_IST).isoformat(),
+                "skipped": skipped,
+                "row_counts": current_counts,
+                "row_delta": row_delta,
+            },
+            indent=2,
+        )
+    )
+    logger.info("Ingest run status saved → %s", status_path)
 
 
 def _validate_credentials(settings) -> None:
@@ -66,6 +104,12 @@ def run_pipeline() -> None:
     current_counts = get_current_row_counts(settings.google_sheet_id, credentials_path)
     stored_counts = load_stored_counts(settings.ingest_state_path)
     if sheets_unchanged(current_counts, stored_counts):
+        _record_ingest_run(
+            settings,
+            skipped=True,
+            current_counts=current_counts,
+            stored_counts=stored_counts,
+        )
         return
 
     settings.duckdb_path.parent.mkdir(parents=True, exist_ok=True)
@@ -92,6 +136,12 @@ def run_pipeline() -> None:
     logger.info("Validation passed for all raw tables.")
 
     save_counts(settings.ingest_state_path, current_counts)
+    _record_ingest_run(
+        settings,
+        skipped=False,
+        current_counts=current_counts,
+        stored_counts=stored_counts,
+    )
 
 
 def main() -> None:
