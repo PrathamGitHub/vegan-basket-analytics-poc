@@ -1,0 +1,27 @@
+# Rill dashboard server
+FROM debian:bookworm-slim
+
+LABEL org.opencontainers.image.title="vegan-basket-rill"
+LABEL org.opencontainers.image.description="Rill BI dashboard for Vegan Basket analytics (port 9009)"
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install the official Rill binary
+RUN curl -s https://cdn.rilldata.com/rill/install.sh | sh
+
+# Copy the Rill project (dashboards, metrics, models, connectors)
+COPY rill/ ./rill/
+
+# Mount point for the shared DuckDB file (read-only volume)
+RUN mkdir -p data
+
+EXPOSE 9009
+
+# --no-open  → don't try to launch a browser
+# --project  → path to the rill project folder
+CMD ["rill", "start", "--project", "/app/rill", "--port", "9009", "--no-open"]

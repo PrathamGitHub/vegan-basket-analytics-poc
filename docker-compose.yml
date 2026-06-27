@@ -1,0 +1,61 @@
+version: "3.9"
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Vegan Basket Analytics — Docker Compose
+#
+#  Services
+#  ────────
+#  pipeline   Python + dbt batch job; cron fires at 23:00 IST / 17:30 UTC
+#  rill       Rill BI dashboard; always-on at http://localhost:9009
+#
+#  Shared state
+#  ────────────
+#  data/                  → bind-mounted into both containers
+#    vegan_basket.duckdb  → pipeline writes, rill reads (READ_ONLY)
+#    logs/                → cron / pipeline logs
+#    ingest_state.json    → revision guard state
+#    last_ingest_run.json → Telegram digest status
+#  credentials/           → read-only bind mount; holds service-account.json
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Batch pipeline (ingestion + dbt + Telegram digest) ─────────────────────
+  pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: vegan-basket-pipeline
+    container_name: vegan-basket-pipeline
+    restart: unless-stopped
+
+    env_file: .env
+
+    # Override paths that differ between host and container
+    environment:
+      DUCKDB_PATH: /app/data/vegan_basket.duckdb
+      GOOGLE_SERVICE_ACCOUNT_FILE: /app/credentials/service-account.json
+      INGEST_STATE_PATH: /app/data/ingest_state.json
+
+    volumes:
+      - ./data:/app/data               # DuckDB file + logs + state
+      - ./credentials:/app/credentials:ro  # Google service account (read-only)
+
+    # The container runs cron in the foreground; no exposed ports needed.
+    # To trigger the pipeline immediately (e.g. first-run test):
+    #   docker compose run --rm pipeline /app/scripts/run_daily.sh
+
+  # ── Rill dashboard (always-on BI server) ───────────────────────────────────
+  rill:
+    build:
+      context: .
+      dockerfile: Dockerfile.rill
+    image: vegan-basket-rill
+    container_name: vegan-basket-rill
+    restart: unless-stopped
+
+    ports:
+      - "9009:9009"
+
+    volumes:
+      - ./data:/app/data:ro            # DuckDB file (read-only; pipeline writes)

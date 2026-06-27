@@ -1,0 +1,35 @@
+# Python
+.venv/
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*.pyo
+
+# dbt artifacts (generated at runtime / build time)
+dbt/target/
+dbt/logs/
+dbt/.user.yml
+
+# DuckDB data files (mounted as volumes)
+data/*.duckdb
+data/ingest_state.json
+data/last_ingest_run.json
+data/logs/
+
+# Rill runtime cache
+rill/tmp/
+
+# Secrets (mounted as volumes)
+.env
+credentials/
+
+# Git
+.git/
+.gitignore
+
+# Docs / planning
+detailed_docs_for_future_execution/
+
+# Editor
+.cursor/
+*.swp
