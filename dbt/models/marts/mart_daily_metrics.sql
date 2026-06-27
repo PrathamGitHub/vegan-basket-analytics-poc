@@ -1,70 +1,27 @@
-with inventory_lines as (
-    select * from {{ ref('transaction_items_enriched') }}
-),
+-- Company-level daily spine with cumulative outstanding balances.
+-- Derived from mart_transactions so that allocated payments are consistent
+-- with the product/vendor/customer breakdown marts.
+--
+-- outstanding_payable / outstanding_receivable are true cumulative running
+-- balances from the first activity date.  Use arg_max(col, date) in Rill
+-- to surface "balance as of period end" in KPI cards.
 
-payment_lines as (
-    select *
-    from {{ ref('transaction_payment') }}
-    where payment_type = 'vendor_payment'
-        and vendor_name is not null
-    union
-    select *
-    from {{ ref('transaction_payment') }}
-    where payment_type = 'customer_collection'
-        and customer_name is not null
-),
-
-daily_inventory as (
+with daily_agg as (
     select
-        transaction_date as date,
-        sum(
-            case when transaction_type = 'Purchase' then quantity_kg else 0 end
-        ) as purchase_qty,
-        sum(
-            case
-                when transaction_type = 'Purchase' and rate_lookup_status = 'matched'
-                then transaction_amount
-                else 0
-            end
-        ) as purchase_amount,
-        sum(
-            case when transaction_type = 'Sale' then quantity_kg else 0 end
-        ) as sales_qty,
-        sum(
-            case
-                when transaction_type = 'Sale' and rate_lookup_status = 'matched'
-                then transaction_amount
-                else 0
-            end
-        ) as sales_amount
-    from inventory_lines
-    group by 1
-),
-
-daily_payments as (
-    select
-        transaction_date as date,
-        sum(
-            case when payment_type = 'vendor_payment' then payment_amount else 0 end
-        ) as payments_paid,
-        sum(
-            case when payment_type = 'customer_collection' then payment_amount else 0 end
-        ) as payments_received
-    from payment_lines
-    group by 1
-),
-
-activity_dates as (
-    select date from daily_inventory
-    union
-    select date from daily_payments
+        date,
+        sum(case when transaction_type = 'Purchase' then quantity_kg        else 0 end) as purchase_qty,
+        sum(case when transaction_type = 'Purchase' then transaction_amount  else 0 end) as purchase_amount,
+        sum(case when transaction_type = 'Sale'     then quantity_kg        else 0 end) as sales_qty,
+        sum(case when transaction_type = 'Sale'     then transaction_amount  else 0 end) as sales_amount,
+        sum(case when transaction_type = 'Purchase' then allocated_payment   else 0 end) as payments_paid,
+        sum(case when transaction_type = 'Sale'     then allocated_payment   else 0 end) as payments_received
+    from {{ ref('mart_transactions') }}
+    group by date
 ),
 
 date_bounds as (
-    select
-        min(date) as min_date,
-        max(date) as max_date
-    from activity_dates
+    select min(date) as min_date, max(date) as max_date
+    from daily_agg
 ),
 
 date_spine as (
@@ -79,18 +36,15 @@ date_spine as (
 
 daily_combined as (
     select
-        date_spine.date,
-        coalesce(daily_inventory.purchase_qty, 0) as purchase_qty,
-        coalesce(daily_inventory.purchase_amount, 0) as purchase_amount,
-        coalesce(daily_inventory.sales_qty, 0) as sales_qty,
-        coalesce(daily_inventory.sales_amount, 0) as sales_amount,
-        coalesce(daily_payments.payments_paid, 0) as payments_paid,
-        coalesce(daily_payments.payments_received, 0) as payments_received
-    from date_spine
-    left join daily_inventory
-        on date_spine.date = daily_inventory.date
-    left join daily_payments
-        on date_spine.date = daily_payments.date
+        ds.date,
+        coalesce(da.purchase_qty,      0) as purchase_qty,
+        coalesce(da.purchase_amount,   0) as purchase_amount,
+        coalesce(da.sales_qty,         0) as sales_qty,
+        coalesce(da.sales_amount,      0) as sales_amount,
+        coalesce(da.payments_paid,     0) as payments_paid,
+        coalesce(da.payments_received, 0) as payments_received
+    from date_spine ds
+    left join daily_agg da on ds.date = da.date
 )
 
 select

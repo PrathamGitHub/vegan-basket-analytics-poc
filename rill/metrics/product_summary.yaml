@@ -3,6 +3,8 @@ type: metrics_view
 
 display_name: Product Summary
 model: product_summary_data
+timeseries: date
+smallest_time_grain: day
 
 security:
   access: true
@@ -24,14 +26,14 @@ measures:
     format_d3: ",.1f"
 
   - name: purchase_amount
-    display_name: Purchase Amount (Rs)
+    display_name: Purchase Amount (₹)
     expression: sum(purchase_amount)
     format_d3: ",.0f"
     format_d3_locale:
       currency: ["₹", ""]
 
   - name: sales_amount
-    display_name: Sales Amount (Rs)
+    display_name: Sales Amount (₹)
     expression: sum(sales_amount)
     format_d3: ",.0f"
     format_d3_locale:

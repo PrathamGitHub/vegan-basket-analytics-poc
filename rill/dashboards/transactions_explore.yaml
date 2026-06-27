@@ -1,0 +1,20 @@
+type: explore
+
+# Ad-hoc explorer backed by the unified fact mart.
+# All four global filters are available: date range, product, vendor, customer.
+# Use this view to answer one-off questions like:
+#   "How much Mushroom Bulk did Vendor X sell us in Q1?"
+#   "What is the gross margin on Baby Corn for Customer Y?"
+
+display_name: Transactions Explorer
+metrics_view: transactions
+
+dimensions: "*"
+measures: "*"
+
+defaults:
+  time_range: P3M
+  comparison_mode: none
+
+time_zones:
+  - Asia/Kolkata

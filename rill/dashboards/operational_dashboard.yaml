@@ -2,13 +2,18 @@ type: canvas
 
 display_name: Vegan Basket Operations
 
+# ── Global defaults ───────────────────────────────────────────────────────────
 defaults:
   time_range: P3M
-  comparison_mode: none
+  comparison_mode: none       # switch to period / year in the UI for % change
 
 time_zones:
   - Asia/Kolkata
 
+# ── Global filter chips ───────────────────────────────────────────────────────
+# All three dimension chips below correspond to columns present in the
+# `transactions` metrics_view, so every chart on the canvas responds to them.
+# The temporal filter is always available via the date-range picker.
 filters:
   enable: true
   pinned:
@@ -16,14 +21,14 @@ filters:
     - vendor_name
     - customer_name
 
+# ─────────────────────────────────────────────────────────────────────────────
+# ROW 1 — KPI scorecards (all from `transactions` — all 4 filters apply)
+# ─────────────────────────────────────────────────────────────────────────────
 rows:
-  - height: 140px
+  - height: 150px
     items:
       - kpi_grid:
-          comparison:
-            - percent_change
-            - delta
-            - previous
+          metrics_view: transactions
           measures:
             - purchase_qty
             - purchase_amount
@@ -33,27 +38,32 @@ rows:
             - payments_received
             - outstanding_payable
             - outstanding_receivable
-          metrics_view: daily_metrics
+          comparison:
+            - percent_change
+            - delta
           sparkline: bottom
         width: 12
 
-  - height: 320px
+# ─────────────────────────────────────────────────────────────────────────────
+# ROW 2 — Purchase vs Sales amount trends over time
+# ─────────────────────────────────────────────────────────────────────────────
+  - height: 300px
     items:
       - line_chart:
-          metrics_view: daily_metrics
-          title: Daily Purchase Trend
+          title: Purchase Amount Over Time
+          metrics_view: transactions
           x:
             field: date
-            sort: x
             type: temporal
+            sort: x
           y:
             field: purchase_amount
             type: quantitative
             zeroBasedOrigin: true
         width: 6
       - line_chart:
-          title: Daily Sales Trend
-          metrics_view: daily_metrics
+          title: Sales Amount Over Time
+          metrics_view: transactions
           x:
             field: date
             type: temporal
@@ -64,11 +74,56 @@ rows:
             zeroBasedOrigin: true
         width: 6
 
-  - height: 320px
+# ─────────────────────────────────────────────────────────────────────────────
+# ROW 3 — Payments and gross margin
+# ─────────────────────────────────────────────────────────────────────────────
+  - height: 280px
+    items:
+      - line_chart:
+          title: Payments Paid (Vendors)
+          metrics_view: transactions
+          x:
+            field: date
+            type: temporal
+            sort: x
+          y:
+            field: payments_paid
+            type: quantitative
+            zeroBasedOrigin: true
+        width: 4
+      - line_chart:
+          title: Payments Received (Customers)
+          metrics_view: transactions
+          x:
+            field: date
+            type: temporal
+            sort: x
+          y:
+            field: payments_received
+            type: quantitative
+            zeroBasedOrigin: true
+        width: 4
+      - bar_chart:
+          title: Gross Margin (₹) by Period
+          metrics_view: transactions
+          x:
+            field: date
+            type: temporal
+            sort: x
+          y:
+            field: gross_margin
+            type: quantitative
+            zeroBasedOrigin: false
+        width: 4
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ROW 4 — Product breakdown (product filter highlights selection)
+# ─────────────────────────────────────────────────────────────────────────────
+  - height: 280px
     items:
       - bar_chart:
-          title: Product Purchase Amount
-          metrics_view: product_summary
+          title: Purchase Amount by Product
+          metrics_view: transactions
           x:
             field: product_name
             type: nominal
@@ -77,10 +132,10 @@ rows:
             field: purchase_amount
             type: quantitative
             zeroBasedOrigin: true
-        width: 6
+        width: 4
       - bar_chart:
-          title: Product Sales Amount
-          metrics_view: product_summary
+          title: Sales Amount by Product
+          metrics_view: transactions
           x:
             field: product_name
             type: nominal
@@ -89,13 +144,40 @@ rows:
             field: sales_amount
             type: quantitative
             zeroBasedOrigin: true
-        width: 6
+        width: 4
+      - bar_chart:
+          title: Volume by Product (kg)
+          metrics_view: transactions
+          x:
+            field: product_name
+            type: nominal
+            sort: -y
+          y:
+            field: purchase_qty
+            type: quantitative
+            zeroBasedOrigin: true
+        width: 4
 
-  - height: 320px
+# ─────────────────────────────────────────────────────────────────────────────
+# ROW 5 — Vendor breakdown (vendor filter highlights selection)
+# ─────────────────────────────────────────────────────────────────────────────
+  - height: 280px
     items:
       - bar_chart:
-          title: Vendor Outstanding
-          metrics_view: vendor_summary
+          title: Purchase Amount by Vendor
+          metrics_view: transactions
+          x:
+            field: vendor_name
+            type: nominal
+            sort: -y
+          y:
+            field: purchase_amount
+            type: quantitative
+            zeroBasedOrigin: true
+        width: 6
+      - bar_chart:
+          title: Net Payable by Vendor
+          metrics_view: transactions
           x:
             field: vendor_name
             type: nominal
@@ -105,13 +187,63 @@ rows:
             type: quantitative
             zeroBasedOrigin: true
         width: 6
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ROW 6 — Customer breakdown (customer filter highlights selection)
+# ─────────────────────────────────────────────────────────────────────────────
+  - height: 280px
+    items:
       - bar_chart:
-          title: Customer Outstanding
-          metrics_view: customer_summary
+          title: Sales Amount by Customer
+          metrics_view: transactions
           x:
             field: customer_name
             type: nominal
             sort: -y
+          y:
+            field: sales_amount
+            type: quantitative
+            zeroBasedOrigin: true
+        width: 6
+      - bar_chart:
+          title: Net Receivable by Customer
+          metrics_view: transactions
+          x:
+            field: customer_name
+            type: nominal
+            sort: -y
+          y:
+            field: outstanding_receivable
+            type: quantitative
+            zeroBasedOrigin: true
+        width: 6
+
+# ─────────────────────────────────────────────────────────────────────────────
+# ROW 7 — Cumulative outstanding balances (company level, from daily_metrics)
+#          These use precomputed running totals so they reflect "as of period end"
+#          regardless of what date sub-range is selected.
+# ─────────────────────────────────────────────────────────────────────────────
+  - height: 280px
+    items:
+      - line_chart:
+          title: Cumulative Outstanding Payable (All Vendors)
+          metrics_view: daily_metrics
+          x:
+            field: date
+            type: temporal
+            sort: x
+          y:
+            field: outstanding_payable
+            type: quantitative
+            zeroBasedOrigin: true
+        width: 6
+      - line_chart:
+          title: Cumulative Outstanding Receivable (All Customers)
+          metrics_view: daily_metrics
+          x:
+            field: date
+            type: temporal
+            sort: x
           y:
             field: outstanding_receivable
             type: quantitative

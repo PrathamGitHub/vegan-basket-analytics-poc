@@ -1,0 +1,4 @@
+type: model
+materialize: false
+
+sql: SELECT * FROM vb.marts.mart_transactions

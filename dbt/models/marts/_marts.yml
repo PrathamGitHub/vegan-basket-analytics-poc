@@ -1,82 +1,179 @@
 version: 2
 
 models:
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # PRIMARY FACT MART — drives all four global dashboard filters
+  # ─────────────────────────────────────────────────────────────────────────────
+  - name: mart_transactions
+    description: >
+      Item-level fact mart at the grain of (date, transaction_key, product_name).
+      Every row is one product line within a purchase or sale transaction.
+      All four BI filter dimensions are present as columns so that Rill canvas
+      filters — temporal, product, vendor, customer — apply uniformly across
+      every chart on the dashboard.
+
+      Payment allocation: the transaction-level payment_amount is distributed
+      proportionally to each item's share of the total transaction amount
+      (equal split when all items are missing_rate).  This keeps
+      sum(allocated_payment) == payment_amount with no double-counting.
+    columns:
+      - name: date
+        description: Business transaction date.
+        tests: [not_null]
+      - name: week_start
+        description: Monday of the ISO week containing the transaction date.
+      - name: month_start
+        description: First day of the calendar month containing the transaction date.
+      - name: transaction_key
+        description: MD5 surrogate key for the source transaction row.
+        tests: [not_null]
+      - name: transaction_type
+        description: "'Purchase' or 'Sale'."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Purchase', 'Sale']
+      - name: vendor_name
+        description: Vendor counterparty; NULL for Sale transactions.
+      - name: customer_name
+        description: Customer counterparty; NULL for Purchase transactions.
+      - name: product_name
+        description: Product traded on this line.
+        tests: [not_null]
+      - name: quantity_kg
+        description: Quantity in kilograms for this product line.
+        tests: [not_null]
+      - name: applicable_rate
+        description: Rate (₹/kg) applied to this line; NULL when missing_rate.
+      - name: transaction_amount
+        description: quantity_kg × applicable_rate; 0 when missing_rate.
+      - name: rate_lookup_status
+        description: "'matched' or 'missing_rate'."
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['matched', 'missing_rate']
+      - name: payment_mode
+        description: "'Cash' or 'Online'; NULL when no payment on this transaction."
+      - name: allocated_payment
+        description: >
+          Portion of the transaction payment attributable to this product line
+          (proportional to transaction_amount; equal split if all lines are
+          missing_rate).
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # COMPANY-LEVEL DAILY TIMELINE — cumulative outstanding balances
+  # ─────────────────────────────────────────────────────────────────────────────
   - name: mart_daily_metrics
     description: >
-      Daily company-level purchase, sales, payment, and cumulative outstanding
-      balances for Rill dashboards. Includes every calendar day from first to
-      last activity (zero-filled on inactive days). Amount metrics use matched
-      rates only; quantity includes all lines. Payments include refunds
-      (negative amounts). Outstanding columns are cumulative running balances.
+      Continuous daily spine (every calendar day from first to last activity,
+      zero-filled on inactive days) with company-level purchase, sales, payment,
+      and CUMULATIVE outstanding balances.  Derived from mart_transactions so
+      payment figures are consistent with the item-level mart.
+      Use arg_max(outstanding_payable, date) in Rill to surface
+      "balance as of period end".
     columns:
       - name: date
         description: Business transaction date (continuous daily spine).
-        tests:
-          - not_null
-          - unique
+        tests: [not_null, unique]
       - name: purchase_qty
-        description: Total purchase quantity (kg) for the day, all rate statuses.
+        description: Total purchase quantity (kg) for the day.
       - name: purchase_amount
-        description: Sum of quantity × vendor rate for matched purchase lines only.
+        description: Sum of transaction_amount for Purchase lines.
       - name: sales_qty
-        description: Total sales quantity (kg) for the day, all rate statuses.
+        description: Total sales quantity (kg) for the day.
       - name: sales_amount
-        description: Sum of quantity × customer rate for matched sale lines only.
+        description: Sum of transaction_amount for Sale lines.
       - name: payments_paid
-        description: >
-          Net vendor payments on purchase transactions for the day
-          (positive = paid, negative = refund).
+        description: Net vendor payments allocated for the day.
       - name: payments_received
-        description: >
-          Net customer collections on sale transactions for the day
-          (positive = received, negative = refund).
+        description: Net customer collections allocated for the day.
       - name: outstanding_payable
         description: >
           Cumulative accounts payable balance through this date
-          (running sum of daily purchase_amount minus payments_paid).
+          (running sum of purchase_amount minus payments_paid).
       - name: outstanding_receivable
         description: >
           Cumulative accounts receivable balance through this date
-          (running sum of daily sales_amount minus payments_received).
+          (running sum of sales_amount minus payments_received).
 
-  - name: mart_product_summary
-    description: >
-      Lifetime purchase and sales totals by product. Amounts use matched rates
-      only; quantities include all lines regardless of rate status.
-    columns:
-      - name: product_name
-        tests:
-          - not_null
-          - unique
-      - name: purchase_qty
-      - name: sales_qty
-      - name: purchase_amount
-      - name: sales_amount
-
+  # ─────────────────────────────────────────────────────────────────────────────
+  # PER-VENDOR DAILY — supports vendor filter + temporal filter
+  # ─────────────────────────────────────────────────────────────────────────────
   - name: mart_vendor_summary
     description: >
-      Lifetime purchase totals and accounts payable balance by vendor.
-      Outstanding payable may be negative when payments exceed matched
-      purchase value (overpayment or refund).
+      Daily grain (date × vendor_name) purchase activity with a continuous
+      date spine per vendor (zero-filled on inactive days) and a cumulative
+      outstanding_payable running balance partitioned by vendor.
+      Enables both temporal and vendor filters in Rill explore views.
     columns:
+      - name: date
+        description: Business transaction date (continuous spine per vendor).
+        tests: [not_null]
       - name: vendor_name
-        tests:
-          - not_null
-          - unique
+        description: Vendor name.
+        tests: [not_null]
       - name: purchase_qty
+        description: Purchase quantity (kg) from this vendor on this day.
       - name: purchase_amount
+        description: Purchase transaction amount from this vendor on this day.
+      - name: payments_paid
+        description: Payments allocated to this vendor on this day.
       - name: outstanding_payable
+        description: >
+          Cumulative accounts payable to this vendor through this date
+          (running sum of purchase_amount minus payments_paid, per vendor).
 
+  # ─────────────────────────────────────────────────────────────────────────────
+  # PER-CUSTOMER DAILY — supports customer filter + temporal filter
+  # ─────────────────────────────────────────────────────────────────────────────
   - name: mart_customer_summary
     description: >
-      Lifetime sales totals and accounts receivable balance by customer.
-      Outstanding receivable may be negative when collections exceed matched
-      sales value (overpayment or refund).
+      Daily grain (date × customer_name) sales activity with a continuous
+      date spine per customer (zero-filled on inactive days) and a cumulative
+      outstanding_receivable running balance partitioned by customer.
+      Enables both temporal and customer filters in Rill explore views.
     columns:
+      - name: date
+        description: Business transaction date (continuous spine per customer).
+        tests: [not_null]
       - name: customer_name
-        tests:
-          - not_null
-          - unique
+        description: Customer name.
+        tests: [not_null]
       - name: sales_qty
+        description: Sales quantity (kg) to this customer on this day.
       - name: sales_amount
+        description: Sales transaction amount to this customer on this day.
+      - name: payments_received
+        description: Collections allocated from this customer on this day.
       - name: outstanding_receivable
+        description: >
+          Cumulative accounts receivable from this customer through this date
+          (running sum of sales_amount minus payments_received, per customer).
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # PER-PRODUCT DAILY — supports product filter + temporal filter
+  # ─────────────────────────────────────────────────────────────────────────────
+  - name: mart_product_summary
+    description: >
+      Daily grain (date × product_name) purchase and sales activity.
+      Adding the date column enables temporal filtering in Rill so product
+      breakdowns respond correctly to date range filters.
+    columns:
+      - name: date
+        description: Business transaction date.
+        tests: [not_null]
+      - name: product_name
+        description: Product name.
+        tests: [not_null]
+      - name: purchase_qty
+        description: Purchase quantity (kg) for this product on this day.
+      - name: sales_qty
+        description: Sales quantity (kg) for this product on this day.
+      - name: purchase_amount
+        description: Purchase transaction amount for this product on this day.
+      - name: sales_amount
+        description: Sales transaction amount for this product on this day.

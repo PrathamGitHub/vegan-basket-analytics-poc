@@ -1,7 +1,4 @@
 type: model
 materialize: false
 
-refs:
-  - vendor_summary_data
-
 sql: SELECT * FROM vb.marts.mart_customer_summary

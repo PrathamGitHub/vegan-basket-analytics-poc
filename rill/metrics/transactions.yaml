@@ -1,0 +1,141 @@
+version: 1
+type: metrics_view
+
+display_name: Transactions
+model: transactions_data
+timeseries: date
+smallest_time_grain: day
+
+security:
+  access: true
+
+# ── Dimensions ────────────────────────────────────────────────────────────────
+# All four global filter axes are defined here so that canvas filter chips
+# (temporal, product, vendor, customer) apply to every chart backed by this view.
+dimensions:
+  - name: transaction_type
+    display_name: Transaction Type
+    column: transaction_type
+
+  - name: vendor_name
+    display_name: Vendor
+    column: vendor_name
+
+  - name: customer_name
+    display_name: Customer
+    column: customer_name
+
+  - name: product_name
+    display_name: Product
+    column: product_name
+
+  - name: rate_lookup_status
+    display_name: Rate Status
+    column: rate_lookup_status
+
+  - name: payment_mode
+    display_name: Payment Mode
+    column: payment_mode
+
+# ── Measures ──────────────────────────────────────────────────────────────────
+measures:
+  # Volume
+  - name: purchase_qty
+    display_name: Purchase Qty (kg)
+    expression: "sum(case when transaction_type = 'Purchase' then quantity_kg else 0 end)"
+    format_d3: ",.1f"
+
+  - name: sales_qty
+    display_name: Sales Qty (kg)
+    expression: "sum(case when transaction_type = 'Sale' then quantity_kg else 0 end)"
+    format_d3: ",.1f"
+
+  # Amounts
+  - name: purchase_amount
+    display_name: Purchase Amount (₹)
+    expression: "sum(case when transaction_type = 'Purchase' then transaction_amount else 0 end)"
+    format_d3: ",.0f"
+    format_d3_locale:
+      currency: ["₹", ""]
+
+  - name: sales_amount
+    display_name: Sales Amount (₹)
+    expression: "sum(case when transaction_type = 'Sale' then transaction_amount else 0 end)"
+    format_d3: ",.0f"
+    format_d3_locale:
+      currency: ["₹", ""]
+
+  # Payments (proportionally allocated from transaction-level payments)
+  - name: payments_paid
+    display_name: Payments Paid (₹)
+    expression: "sum(case when transaction_type = 'Purchase' then allocated_payment else 0 end)"
+    format_d3: ",.0f"
+    format_d3_locale:
+      currency: ["₹", ""]
+
+  - name: payments_received
+    display_name: Payments Received (₹)
+    expression: "sum(case when transaction_type = 'Sale' then allocated_payment else 0 end)"
+    format_d3: ",.0f"
+    format_d3_locale:
+      currency: ["₹", ""]
+
+  # Net outstanding — responds to all four global filters
+  # Definition: purchase/sales amount minus payments for the filtered context.
+  # (Use mart_daily_metrics + arg_max for cumulative-from-inception balance.)
+  - name: outstanding_payable
+    display_name: Net Payable (₹)
+    description: >
+      Purchase amount minus payments within the selected vendor / product /
+      date context.  Positive = amount still owed to vendors.
+    expression: >
+      sum(case when transaction_type = 'Purchase'
+               then transaction_amount - allocated_payment
+               else 0 end)
+    format_d3: ",.0f"
+    format_d3_locale:
+      currency: ["₹", ""]
+
+  - name: outstanding_receivable
+    display_name: Net Receivable (₹)
+    description: >
+      Sales amount minus collections within the selected customer / product /
+      date context.  Positive = amount still owed by customers.
+    expression: >
+      sum(case when transaction_type = 'Sale'
+               then transaction_amount - allocated_payment
+               else 0 end)
+    format_d3: ",.0f"
+    format_d3_locale:
+      currency: ["₹", ""]
+
+  # Profitability
+  - name: gross_margin
+    display_name: Gross Margin (₹)
+    description: Sales amount minus purchase amount within the selected context.
+    expression: >
+      sum(case when transaction_type = 'Sale'     then transaction_amount else 0 end) -
+      sum(case when transaction_type = 'Purchase' then transaction_amount else 0 end)
+    format_d3: ",.0f"
+    format_d3_locale:
+      currency: ["₹", ""]
+
+  - name: gross_margin_pct
+    display_name: Gross Margin %
+    description: Gross margin as a percentage of sales amount.
+    expression: >
+      case
+        when sum(case when transaction_type = 'Sale' then transaction_amount else 0 end) > 0
+        then (
+          sum(case when transaction_type = 'Sale'     then transaction_amount else 0 end) -
+          sum(case when transaction_type = 'Purchase' then transaction_amount else 0 end)
+        ) / sum(case when transaction_type = 'Sale'   then transaction_amount else 0 end)
+        else null
+      end
+    format_d3: ".1%"
+
+  # Activity
+  - name: transaction_count
+    display_name: Transactions
+    expression: count(distinct transaction_key)
+    format_d3: ",d"

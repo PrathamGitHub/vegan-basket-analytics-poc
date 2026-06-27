@@ -1,53 +1,70 @@
-with inventory_lines as (
-    select *
-    from {{ ref('transaction_items_enriched') }}
+-- Grain: (date, customer_name) — daily sales activity per customer with a
+-- continuous date spine (zero-filled on inactive days) and a cumulative
+-- outstanding_receivable running balance.
+--
+-- Temporal filter in Rill (timeseries: date) and customer filter both apply.
+-- Source: mart_transactions keeps allocated payments consistent.
+
+with customer_daily as (
+    select
+        date,
+        customer_name,
+        sum(quantity_kg)       as sales_qty,
+        sum(transaction_amount) as sales_amount,
+        sum(allocated_payment)  as payments_received
+    from {{ ref('mart_transactions') }}
     where transaction_type = 'Sale'
-        and customer_name is not null
-),
-
-payment_lines as (
-    select *
-    from {{ ref('transaction_payment') }}
-    where payment_type = 'customer_collection'
-        and customer_name is not null
-),
-
-customer_sales as (
-    select
-        customer_name,
-        sum(quantity_kg) as sales_qty,
-        sum(
-            case
-                when rate_lookup_status = 'matched' then transaction_amount
-                else 0
-            end
-        ) as sales_amount
-    from inventory_lines
-    group by 1
-),
-
-customer_payments as (
-    select
-        customer_name,
-        sum(payment_amount) as payments_received
-    from payment_lines
-    group by 1
+      and customer_name is not null
+    group by date, customer_name
 ),
 
 customers as (
-    select customer_name from customer_sales
-    union
-    select customer_name from customer_payments
+    select distinct customer_name from customer_daily
+),
+
+date_bounds as (
+    select min(date) as min_date, max(date) as max_date
+    from customer_daily
+),
+
+date_spine as (
+    select unnest(
+        generate_series(
+            (select min_date from date_bounds),
+            (select max_date from date_bounds),
+            interval 1 day
+        )
+    )::date as date
+),
+
+customer_spine as (
+    select ds.date, c.customer_name
+    from date_spine ds
+    cross join customers c
+),
+
+filled as (
+    select
+        cs.date,
+        cs.customer_name,
+        coalesce(cd.sales_qty,          0) as sales_qty,
+        coalesce(cd.sales_amount,       0) as sales_amount,
+        coalesce(cd.payments_received,  0) as payments_received
+    from customer_spine cs
+    left join customer_daily cd
+        on cs.date          = cd.date
+        and cs.customer_name = cd.customer_name
 )
 
 select
-    customers.customer_name,
-    coalesce(customer_sales.sales_qty, 0) as sales_qty,
-    coalesce(customer_sales.sales_amount, 0) as sales_amount,
-    coalesce(customer_sales.sales_amount, 0)
-    - coalesce(customer_payments.payments_received, 0) as outstanding_receivable
-from customers
-left join customer_sales
-    on customers.customer_name = customer_sales.customer_name
-left join customer_payments
-    on customers.customer_name = customer_payments.customer_name
+    date,
+    customer_name,
+    sales_qty,
+    sales_amount,
+    payments_received,
+    sum(sales_amount - payments_received) over (
+        partition by customer_name
+        order by date
+        rows between unbounded preceding and current row
+    ) as outstanding_receivable
+from filled

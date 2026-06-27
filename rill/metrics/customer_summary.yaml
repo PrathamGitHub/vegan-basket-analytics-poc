@@ -3,6 +3,8 @@ type: metrics_view
 
 display_name: Customer Summary
 model: customer_summary_data
+timeseries: date
+smallest_time_grain: day
 
 security:
   access: true
@@ -19,16 +21,25 @@ measures:
     format_d3: ",.1f"
 
   - name: sales_amount
-    display_name: Sales Amount (Rs)
+    display_name: Sales Amount (₹)
     expression: sum(sales_amount)
     format_d3: ",.0f"
     format_d3_locale:
       currency: ["₹", ""]
 
+  - name: payments_received
+    display_name: Payments Received (₹)
+    expression: sum(payments_received)
+    format_d3: ",.0f"
+    format_d3_locale:
+      currency: ["₹", ""]
+
   - name: outstanding_receivable
-    display_name: Outstanding Receivable (Rs)
-    description: Lifetime accounts receivable balance by customer.
-    expression: sum(outstanding_receivable)
+    display_name: Outstanding Receivable (₹)
+    description: >
+      Cumulative accounts receivable balance as of the last day in the selected
+      date range (precomputed running total per customer).
+    expression: arg_max(outstanding_receivable, date)
     format_d3: ",.0f"
     format_d3_locale:
       currency: ["₹", ""]

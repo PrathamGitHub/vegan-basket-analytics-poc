@@ -3,6 +3,8 @@ type: metrics_view
 
 display_name: Vendor Summary
 model: vendor_summary_data
+timeseries: date
+smallest_time_grain: day
 
 security:
   access: true
@@ -19,16 +21,25 @@ measures:
     format_d3: ",.1f"
 
   - name: purchase_amount
-    display_name: Purchase Amount (Rs)
+    display_name: Purchase Amount (₹)
     expression: sum(purchase_amount)
     format_d3: ",.0f"
     format_d3_locale:
       currency: ["₹", ""]
 
+  - name: payments_paid
+    display_name: Payments Paid (₹)
+    expression: sum(payments_paid)
+    format_d3: ",.0f"
+    format_d3_locale:
+      currency: ["₹", ""]
+
   - name: outstanding_payable
-    display_name: Outstanding Payable (Rs)
-    description: Lifetime accounts payable balance by vendor.
-    expression: sum(outstanding_payable)
+    display_name: Outstanding Payable (₹)
+    description: >
+      Cumulative accounts payable balance as of the last day in the selected
+      date range (precomputed running total per vendor).
+    expression: arg_max(outstanding_payable, date)
     format_d3: ",.0f"
     format_d3_locale:
       currency: ["₹", ""]
