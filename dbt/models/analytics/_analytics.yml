@@ -20,28 +20,28 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: ['Purchase', 'Sale']
+              arguments:
+                values: ['Purchase', 'Sale']
       - name: product_name
         tests:
           - not_null
           - accepted_values:
-              values:
-                - Mushroom Bulk
-                - Mushroom Pannet
-                - Mushroom B Grade
-                - Baby Corn
-                - Lahsun
+              arguments:
+                values:
+                  - Mushroom Bulk
+                  - Mushroom Pannet
+                  - Mushroom B Grade
+                  - Baby Corn
+                  - Lahsun
       - name: quantity_kg
-        tests:
-          - not_null
-      - name: payment_amount
         tests:
           - not_null
     tests:
       - dbt_utils.unique_combination_of_columns:
-          combination_of_columns:
-            - transaction_key
-            - product_name
+          arguments:
+            combination_of_columns:
+              - transaction_key
+              - product_name
 
   - name: transaction_items_enriched
     description: >
@@ -58,23 +58,57 @@ models:
         tests:
           - not_null
           - accepted_values:
-              values: ['Purchase', 'Sale']
+              arguments:
+                values: ['Purchase', 'Sale']
       - name: product_name
         tests:
           - not_null
       - name: quantity_kg
         tests:
           - not_null
-      - name: payment_amount
-        tests:
-          - not_null
       - name: rate_lookup_status
         tests:
           - not_null
           - accepted_values:
-              values: ['matched', 'missing_rate']
+              arguments:
+                values: ['matched', 'missing_rate']
     tests:
       - dbt_utils.unique_combination_of_columns:
-          combination_of_columns:
-            - transaction_key
-            - product_name
+          arguments:
+            combination_of_columns:
+              - transaction_key
+              - product_name
+
+  - name: transaction_payment
+    description: >
+      Payment-level transaction lines with applicable vendor or customer rates
+      and computed transaction amounts.
+    columns:
+      - name: transaction_key
+        tests:
+          - not_null
+          - unique
+      - name: transaction_timestamp
+        tests:
+          - not_null
+      - name: transaction_date
+        tests:
+          - not_null
+      - name: payment_type
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['vendor_payment', 'customer_collection']
+      - name: vendor_name
+      - name: customer_name
+      - name: payment_amount
+        tests:
+          - not_null
+      - name: payment_mode
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Cash', 'Online']
+      - name: remarks

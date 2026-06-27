@@ -63,8 +63,7 @@ enriched as (
         items.customer_name,
         items.product_name,
         items.quantity_kg,
-        rates.applicable_rate,
-        items.payment_amount
+        rates.applicable_rate
     from items
     left join applicable_rates as rates
         on items.transaction_key = rates.transaction_key
@@ -84,7 +83,6 @@ select
         when applicable_rate is not null
         then round(quantity_kg * applicable_rate, 2)
     end as transaction_amount,
-    payment_amount,
     case
         when applicable_rate is not null then 'matched'
         else 'missing_rate'

@@ -2,6 +2,18 @@ with inventory_lines as (
     select * from {{ ref('transaction_items_enriched') }}
 ),
 
+payment_lines as (
+    select *
+    from {{ ref('transaction_payment') }}
+    where payment_type = 'vendor_payment'
+        and vendor_name is not null
+    union
+    select *
+    from {{ ref('transaction_payment') }}
+    where payment_type = 'customer_collection'
+        and customer_name is not null
+),
+
 daily_inventory as (
     select
         transaction_date as date,
@@ -33,13 +45,12 @@ daily_payments as (
     select
         transaction_date as date,
         sum(
-            case when transaction_type = 'Purchase' then payment_rs else 0 end
+            case when payment_type = 'vendor_payment' then payment_amount else 0 end
         ) as payments_paid,
         sum(
-            case when transaction_type = 'Sale' then payment_rs else 0 end
+            case when payment_type = 'customer_collection' then payment_amount else 0 end
         ) as payments_received
-    from {{ ref('stg_transaction_log') }}
-    where payment_rs != 0
+    from payment_lines
     group by 1
 ),
 

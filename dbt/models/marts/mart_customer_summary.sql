@@ -5,6 +5,13 @@ with inventory_lines as (
         and customer_name is not null
 ),
 
+payment_lines as (
+    select *
+    from {{ ref('transaction_payment') }}
+    where payment_type = 'customer_collection'
+        and customer_name is not null
+),
+
 customer_sales as (
     select
         customer_name,
@@ -22,11 +29,8 @@ customer_sales as (
 customer_payments as (
     select
         customer_name,
-        sum(payment_rs) as payments_received
-    from {{ ref('stg_transaction_log') }}
-    where transaction_type = 'Sale'
-        and payment_rs != 0
-        and customer_name is not null
+        sum(payment_amount) as payments_received
+    from payment_lines
     group by 1
 ),
 

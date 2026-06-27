@@ -5,6 +5,13 @@ with inventory_lines as (
         and vendor_name is not null
 ),
 
+payment_lines as (
+    select *
+    from {{ ref('transaction_payment') }}
+    where payment_type = 'vendor_payment'
+        and vendor_name is not null
+),
+
 vendor_purchases as (
     select
         vendor_name,
@@ -22,11 +29,8 @@ vendor_purchases as (
 vendor_payments as (
     select
         vendor_name,
-        sum(payment_rs) as payments_paid
-    from {{ ref('stg_transaction_log') }}
-    where transaction_type = 'Purchase'
-        and payment_rs != 0
-        and vendor_name is not null
+        sum(payment_amount) as payments_paid
+    from payment_lines
     group by 1
 ),
 

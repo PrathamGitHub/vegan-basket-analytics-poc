@@ -26,8 +26,6 @@ select
     customer_name,
     '{{ product_name }}' as product_name,
     {{ qty_col }} as quantity_kg,
-    payment_rs as payment_amount,
-    payment_mode,
     remarks
 from staged
 where {{ qty_col }} > 0
