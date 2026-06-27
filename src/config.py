@@ -56,6 +56,7 @@ class Settings:
     duckdb_path: Path
     dlt_pipeline_name: str
     dlt_dataset_name: str
+    ingest_state_path: Path
 
 
 def get_settings() -> Settings:
@@ -70,6 +71,12 @@ def get_settings() -> Settings:
     if not duckdb_path.is_absolute():
         duckdb_path = project_root / duckdb_path
 
+    ingest_state_path = Path(
+        os.getenv("INGEST_STATE_PATH", "./data/ingest_state.json")
+    )
+    if not ingest_state_path.is_absolute():
+        ingest_state_path = project_root / ingest_state_path
+
     google_sheet_id = os.getenv("GOOGLE_SHEET_ID", "").strip()
     if not google_sheet_id:
         raise ValueError("GOOGLE_SHEET_ID is required in .env")
@@ -80,4 +87,5 @@ def get_settings() -> Settings:
         duckdb_path=duckdb_path,
         dlt_pipeline_name=os.getenv("DLT_PIPELINE_NAME", "vegan_basket"),
         dlt_dataset_name=os.getenv("DLT_DATASET_NAME", "raw"),
+        ingest_state_path=ingest_state_path,
     )

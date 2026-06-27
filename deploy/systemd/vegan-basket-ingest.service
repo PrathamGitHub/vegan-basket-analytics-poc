@@ -1,0 +1,23 @@
+[Unit]
+Description=Vegan Basket Analytics — daily ingestion (pipeline + dbt)
+# Ensure network is up before fetching from Google Sheets API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+
+# %h expands to the user's home directory in user-mode systemd units.
+# Adjust this path if the repo lives elsewhere.
+WorkingDirectory=%h/work/projects/vegan-basket-analytics-poc
+
+ExecStart=%h/work/projects/vegan-basket-analytics-poc/scripts/run_daily.sh
+
+# Load secrets from .env so they are available to the script.
+# systemd strips quotes from values, so use bare values (no quotes) in .env.
+EnvironmentFile=%h/work/projects/vegan-basket-analytics-poc/.env
+
+# Send output to the systemd journal (readable with: journalctl --user -u vegan-basket-ingest)
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=vegan-basket-ingest

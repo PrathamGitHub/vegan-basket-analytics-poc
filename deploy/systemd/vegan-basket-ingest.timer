@@ -1,0 +1,13 @@
+[Unit]
+Description=Run Vegan Basket Analytics ingest daily at 23:00 IST
+
+[Timer]
+# Fire at 23:00 IST (Asia/Kolkata = UTC+05:30).
+# systemd accepts IANA timezone names directly.
+OnCalendar=*-*-* 23:00:00 Asia/Kolkata
+
+# If the machine was off at fire time, run as soon as it comes back up.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

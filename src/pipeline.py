@@ -8,6 +8,12 @@ import duckdb
 
 from src.config import get_settings
 from src.resources import google_sheets_source, load_all_sheets
+from src.revision_guard import (
+    get_current_row_counts,
+    load_stored_counts,
+    save_counts,
+    sheets_unchanged,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -55,6 +61,13 @@ def run_pipeline() -> None:
     settings = get_settings()
     _validate_credentials(settings)
 
+    # --- Revision guard: skip if no new rows since last successful run ---
+    credentials_path = str(settings.google_service_account_file)
+    current_counts = get_current_row_counts(settings.google_sheet_id, credentials_path)
+    stored_counts = load_stored_counts(settings.ingest_state_path)
+    if sheets_unchanged(current_counts, stored_counts):
+        return
+
     settings.duckdb_path.parent.mkdir(parents=True, exist_ok=True)
     sheet_data = load_all_sheets(settings)
     source_counts = {
@@ -77,6 +90,8 @@ def run_pipeline() -> None:
         source_counts,
     )
     logger.info("Validation passed for all raw tables.")
+
+    save_counts(settings.ingest_state_path, current_counts)
 
 
 def main() -> None:
