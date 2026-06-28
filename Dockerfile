@@ -20,10 +20,11 @@ LABEL org.opencontainers.image.description="Vegan Basket daily ingestion (dlt + 
 
 WORKDIR /app
 
-# cron + process utilities
+# cron + process utilities + curl (Docker socket API for Rill stop/start)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     cron \
     procps \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed Python packages from builder

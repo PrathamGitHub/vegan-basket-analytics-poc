@@ -26,9 +26,48 @@ exec > >(tee -a "$LOG_FILE") 2>&1
 ts() { date '+%Y-%m-%d %H:%M:%S %Z'; }
 log() { echo "[$(ts)] $*"; }
 
+# ── Rill stop/start helpers (DuckDB single-writer coordination) ───────────────
+DOCKER_SOCK="/var/run/docker.sock"
+RILL_CONTAINER="${RILL_CONTAINER_NAME:-vegan-basket-rill}"
+_rill_stopped=false
+
+_docker_api() {
+    curl -sf --unix-socket "$DOCKER_SOCK" "$@"
+}
+
+_stop_rill() {
+    [[ ! -S "$DOCKER_SOCK" ]] && {
+        log "WARNING: Docker socket not found — Rill will not be stopped. DuckDB lock conflict likely."
+        return
+    }
+    local status
+    status=$(_docker_api "http://localhost/containers/${RILL_CONTAINER}/json" \
+        | python3 -c "import sys,json; print(json.load(sys.stdin)['State']['Status'])" 2>/dev/null \
+        || echo "not_found")
+    if [[ "$status" == "running" ]]; then
+        log "Stopping Rill ($RILL_CONTAINER) — acquiring exclusive DuckDB access..."
+        _docker_api -X POST "http://localhost/containers/${RILL_CONTAINER}/stop" >/dev/null
+        _rill_stopped=true
+        log "Rill stopped."
+    else
+        log "Rill is not running (status: ${status}) — nothing to stop."
+    fi
+}
+
+_start_rill() {
+    [[ "$_rill_stopped" != true ]] && return
+    [[ ! -S "$DOCKER_SOCK" ]] && return
+    log "Starting Rill ($RILL_CONTAINER)..."
+    _docker_api -X POST "http://localhost/containers/${RILL_CONTAINER}/start" >/dev/null \
+        || log "Warning: could not start Rill (non-fatal)"
+    _rill_stopped=false
+    log "Rill started."
+}
+
 _on_error() {
     local exit_code=$?
     log "ERROR: daily ingest failed (exit ${exit_code})"
+    _start_rill
     python -m src.telegram_digest --failure --exit-code="${exit_code}" \
         || log "Telegram failure alert could not be sent (non-fatal)"
     exit "${exit_code}"
@@ -63,6 +102,7 @@ if [[ -f "$ROOT/.env" ]]; then
 fi
 
 # ── Pipeline (dlt → DuckDB) ──────────────────────────────────────────────────
+_stop_rill
 log "--- Running ingestion pipeline ---"
 python -m src.pipeline
 log "--- Pipeline finished ---"
@@ -71,6 +111,9 @@ log "--- Pipeline finished ---"
 log "--- Running dbt ---"
 dbt run --project-dir "$ROOT/dbt" --profiles-dir "$ROOT/dbt"
 log "--- dbt finished ---"
+
+# ── Release DuckDB lock before Telegram digest ────────────────────────────────
+_start_rill
 
 log "--- Sending Telegram digest ---"
 python -m src.telegram_digest \

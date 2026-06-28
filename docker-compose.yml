@@ -38,6 +38,7 @@ services:
     volumes:
       - ./data:/app/data               # DuckDB file + logs + state
       - ./credentials:/app/credentials:ro  # Google service account (read-only)
+      - /var/run/docker.sock:/var/run/docker.sock:ro  # Docker API for Rill stop/start
 
     # The container runs cron in the foreground; no exposed ports needed.
     # To trigger the pipeline immediately (e.g. first-run test):
