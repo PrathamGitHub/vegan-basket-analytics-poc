@@ -24,6 +24,7 @@ RUN mkdir -p data
 
 EXPOSE 9009
 
-# --no-open  → don't try to launch a browser
-# --project  → path to the rill project folder
-CMD ["rill", "start", "/app/rill", "--port", "9009", "--no-open"]
+# --no-open     → don't try to launch a browser inside the container
+# --preview     → dashboard-only view (no code editor / developer UI)
+# --environment → marks this as a production runtime
+CMD ["rill", "start", "/app/rill", "--port", "9009", "--no-open", "--preview", "--environment", "production"]

@@ -10,6 +10,6 @@ if [[ ! -f "$ROOT/data/vegan_basket.duckdb" ]]; then
   exit 1
 fi
 
-echo "Starting Rill at http://localhost:9009"
+echo "Starting Rill at http://localhost:9009 (production / preview mode)"
 echo "Open dashboard: Vegan Basket Operations"
-exec rill start --model-timeout-seconds 180
+exec rill start --model-timeout-seconds 180 --preview --environment production

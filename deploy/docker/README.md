@@ -319,6 +319,92 @@ Then open `http://localhost:9009` in your local browser.
 
 ---
 
+## Rill Dashboard Start Modes
+
+Rill can run in two distinct modes. The **default is production (preview)**.
+
+| Mode | Flag | Who it's for | What's visible |
+|------|------|--------------|----------------|
+| **Production** *(default)* | `--preview` | Clients / stakeholders | Dashboard only — no code editor, no source panel, no authoring UI |
+| **Developer** | *(no flag)* | Internal / analysts | Full IDE: dashboard + model editor + source panel |
+
+The active mode is controlled in **two places**:
+
+| File | Used when |
+|------|-----------|
+| `Dockerfile.rill` → `CMD` | Running via Docker / `docker compose` (normal deployment) |
+| `scripts/start_rill.sh` | Running Rill directly on the host (local dev without Docker) |
+
+---
+
+### Switch to Developer mode
+
+#### Docker (standard deployment)
+
+1. Edit `Dockerfile.rill` — remove `--preview` and `--environment production` from the `CMD`:
+
+```dockerfile
+# Developer mode
+CMD ["rill", "start", "/app/rill", "--port", "9009", "--no-open"]
+```
+
+2. Rebuild and restart the container:
+
+```bash
+docker compose build rill
+docker compose up -d --no-deps rill
+```
+
+#### Host / local (without Docker)
+
+Edit `scripts/start_rill.sh` — remove `--preview --environment production` from the `exec` line:
+
+```bash
+exec rill start --model-timeout-seconds 180
+```
+
+---
+
+### Switch back to Production (preview) mode
+
+#### Docker
+
+1. Edit `Dockerfile.rill` — restore `--preview` and `--environment production`:
+
+```dockerfile
+# Production mode (default)
+CMD ["rill", "start", "/app/rill", "--port", "9009", "--no-open", "--preview", "--environment", "production"]
+```
+
+2. Rebuild and restart:
+
+```bash
+docker compose build rill
+docker compose up -d --no-deps rill
+```
+
+#### Host / local
+
+Edit `scripts/start_rill.sh` — restore both flags on the `exec` line:
+
+```bash
+exec rill start --model-timeout-seconds 180 --preview --environment production
+```
+
+---
+
+### Verify the active mode
+
+```bash
+# Inspect the CMD of the running container
+docker inspect vegan-basket-rill --format '{{json .Config.Cmd}}'
+```
+
+- If the output contains `"--preview"` → **production mode** is active.
+- If it does not → **developer mode** is active.
+
+---
+
 ## Troubleshooting
 
 ### `dbt deps` fails during `docker compose build`
