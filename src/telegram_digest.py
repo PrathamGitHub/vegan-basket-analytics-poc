@@ -33,7 +33,7 @@ TELEGRAM_API = "https://api.telegram.org/bot{token}/sendMessage"
 class TelegramSettings:
     enabled: bool
     bot_token: str
-    chat_id: str
+    chat_ids: list[str]
 
 
 @dataclass(frozen=True)
@@ -61,23 +61,54 @@ class PipelineStatus:
     finished_at: str | None
 
 
+def _resolve_chat_ids() -> list[str]:
+    """Collect unique recipient IDs from TELEGRAM_CHAT_IDS and TELEGRAM_CHAT_ID.
+
+    Priority / merge rules:
+    - TELEGRAM_CHAT_IDS=id1,id2,id3  (comma-separated; primary for multi-recipient)
+    - TELEGRAM_CHAT_ID=id            (single ID; original env var kept for compatibility)
+    Both are read and deduplicated while preserving order.
+    """
+    ids: list[str] = []
+    seen: set[str] = set()
+
+    multi = os.getenv("TELEGRAM_CHAT_IDS", "")
+    for raw in multi.split(","):
+        cid = raw.strip()
+        if cid and cid not in seen:
+            ids.append(cid)
+            seen.add(cid)
+
+    single = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+    if single and single not in seen:
+        ids.append(single)
+        seen.add(single)
+
+    return ids
+
+
 def get_telegram_settings() -> TelegramSettings | None:
     enabled = os.getenv("TELEGRAM_DIGEST_ENABLED", "true").strip().lower() in (
         "1",
         "true",
         "yes",
     )
-    token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
-    chat_id = os.getenv("TELEGRAM_CHAT_ID", "").strip()
     if not enabled:
         logger.info("Telegram digest disabled (TELEGRAM_DIGEST_ENABLED=false).")
         return None
-    if not token or not chat_id:
+
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    chat_ids = _resolve_chat_ids()
+
+    if not token or not chat_ids:
         logger.warning(
-            "Telegram digest skipped: set TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID in .env."
+            "Telegram digest skipped: set TELEGRAM_BOT_TOKEN and at least one of "
+            "TELEGRAM_CHAT_IDS or TELEGRAM_CHAT_ID in .env."
         )
         return None
-    return TelegramSettings(enabled=True, bot_token=token, chat_id=chat_id)
+
+    logger.info("Telegram recipients: %d chat(s) configured.", len(chat_ids))
+    return TelegramSettings(enabled=True, bot_token=token, chat_ids=chat_ids)
 
 
 def _escape_markdown(text: str) -> str:
@@ -314,11 +345,12 @@ def build_failure_message(exit_code: int) -> str:
     )
 
 
-def send_telegram_message(settings: TelegramSettings, text: str) -> None:
-    url = TELEGRAM_API.format(token=settings.bot_token)
+def _send_to_one(bot_token: str, chat_id: str, text: str) -> None:
+    """Send a single message to one chat ID. Raises RuntimeError on failure."""
+    url = TELEGRAM_API.format(token=bot_token)
     payload = urllib.parse.urlencode(
         {
-            "chat_id": settings.chat_id,
+            "chat_id": chat_id,
             "text": text,
             "parse_mode": "MarkdownV2",
             "disable_web_page_preview": "true",
@@ -338,6 +370,19 @@ def send_telegram_message(settings: TelegramSettings, text: str) -> None:
         raise RuntimeError(f"Telegram API error: {body}")
 
 
+def broadcast_message(settings: TelegramSettings, text: str) -> int:
+    """Send text to every configured chat. Returns the number of failures."""
+    failures = 0
+    for chat_id in settings.chat_ids:
+        try:
+            _send_to_one(settings.bot_token, chat_id, text)
+            logger.info("Sent to chat %s.", chat_id)
+        except RuntimeError as exc:
+            logger.error("Failed to send to chat %s: %s", chat_id, exc)
+            failures += 1
+    return failures
+
+
 def send_success_digest(*, dry_run: bool = False) -> int:
     settings = get_settings()
     report_date = datetime.now(tz=IST).date()
@@ -353,8 +398,9 @@ def send_success_digest(*, dry_run: bool = False) -> int:
     if telegram is None:
         return 0
 
-    send_telegram_message(telegram, message)
-    logger.info("Telegram daily digest sent.")
+    failures = broadcast_message(telegram, message)
+    sent = len(telegram.chat_ids) - failures
+    logger.info("Telegram daily digest: sent to %d/%d chat(s).", sent, len(telegram.chat_ids))
     return 0
 
 
@@ -368,8 +414,9 @@ def send_failure_alert(exit_code: int, *, dry_run: bool = False) -> int:
     if telegram is None:
         return 0
 
-    send_telegram_message(telegram, message)
-    logger.info("Telegram failure alert sent.")
+    failures = broadcast_message(telegram, message)
+    sent = len(telegram.chat_ids) - failures
+    logger.info("Telegram failure alert: sent to %d/%d chat(s).", sent, len(telegram.chat_ids))
     return 0
 
 
