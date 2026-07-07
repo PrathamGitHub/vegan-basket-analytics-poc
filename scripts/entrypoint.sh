@@ -9,8 +9,9 @@ set -euo pipefail
 
 echo "[entrypoint] Exporting environment to /etc/environment..."
 
-# Write current env vars (skip shell internals that would break /etc/environment)
-printenv | grep -Ev '^(HOSTNAME|HOME|PWD|SHLVL|_|OLDPWD|PATH)=' \
+# Write current env vars (skip shell internals that would break /etc/environment).
+# PATH must be included so cron can find python/dbt in /usr/local/bin.
+printenv | grep -Ev '^(HOSTNAME|HOME|PWD|SHLVL|_|OLDPWD)=' \
     | sed 's/=\(.*\)/="\1"/' \
     >> /etc/environment
 

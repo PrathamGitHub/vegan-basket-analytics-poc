@@ -29,11 +29,15 @@ cp "$REPO/deploy/systemd/vegan-basket-ingest.timer"   "$UNIT_DIR/"
 # 2. Reload systemd to pick up the new files
 systemctl --user daemon-reload
 
-# 3. Enable and start the timer (survives reboots)
+# 3. Enable linger so the timer fires when you are not logged in
+loginctl enable-linger "$USER"
+
+# 4. Enable and start the timer (survives reboots)
 systemctl --user enable --now vegan-basket-ingest.timer
 
-# 4. Verify the timer is scheduled
+# 5. Verify the timer is scheduled (next run should show 17:30 UTC)
 systemctl --user list-timers vegan-basket-ingest.timer
+systemd-analyze calendar '*-*-* 17:30:00 UTC'
 ```
 
 ---
@@ -41,6 +45,9 @@ systemctl --user list-timers vegan-basket-ingest.timer
 ## Verify & Operate
 
 ```bash
+# Confirm the calendar expression (next elapse should be 17:30 UTC = 23:00 IST)
+systemd-analyze calendar '*-*-* 17:30:00 UTC'
+
 # Check timer status and next fire time
 systemctl --user status vegan-basket-ingest.timer
 
